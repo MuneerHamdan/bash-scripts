@@ -3,30 +3,58 @@
 history_file="$HOME/.local/share/dmenu-calc/history"
 
 get_history() {
-    [[ ! -f $history_file ]] && mkdir -p $(dirname $history_file) && touch $history_file
-    [[ ! -s $history_file ]] && echo "No history found" || tac $history_file
+    [[ ! -f $history_file ]] && mkdir -p "$(dirname "$history_file")" && touch "$history_file"
+    # Filter out lines that start with "warning:" from history shown in dmenu
+    if [[ ! -s $history_file ]]; then
+        echo "No history found"
+    else
+        tac "$history_file" | grep -v '^warning:'
+    fi
 }
 
-is_in_history() { grep -q -x -F "$1" $history_file; }
+is_in_history() { grep -q -x -F "$1" "$history_file"; }
 
-add_to_history() { echo "$1" >> $history_file; }
+add_to_history() {
+    # Only add if line contains '=' or '≈' (valid calculation result)
+    if [[ "$1" =~ [=≈] ]]; then
+        echo "$1" >> "$history_file"
+    fi
+}
 
-copy_to_clipboard() { printf "$1" | xclip -sel clip; }
+copy_to_clipboard() { printf "%s" "$1" | xclip -sel clip; }
 
-result_from_equation() { printf "$1" | sed 's/^.*\(=\|≈\) //'; }
+result_from_equation() { printf "%s" "$1" | sed 's/^.*\(=\|≈\) //'; }
 
 main() {
     dmenu_cmd="dmenu -fn 'Monospace-17' -l 10 -p"
 
     while
         input=$(get_history | ${dmenu_cmd} "Calculator: " "$@")
-        [[ -n $input ]] # quit == no input
+        [[ -n $input ]]
     do
-        equation=$( is_in_history "$input" && echo "$input" || echo "$(qalc $input)" )
+        trimmed_input=$(echo "$input" | xargs)
 
+        if [[ "$trimmed_input" == "clear" ]]; then
+            rm -f "$history_file"
+            mkdir -p "$(dirname "$history_file")"
+            touch "$history_file"
+            echo "History cleared." >&2
+            continue
+        fi
+
+        # If input is already a valid history entry (contains = or ≈), use it directly
+        if is_in_history "$input"; then
+            equation="$input"
+        else
+            # Calculate result
+            equation=$(qalc "$input")
+        fi
+
+        # Only add valid results to history
         add_to_history "$equation"
-        copy_to_clipboard $(result_from_equation "$equation")
+        copy_to_clipboard "$(result_from_equation "$equation")"
     done
 }
 
 main "$@"
+
