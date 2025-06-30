@@ -1,0 +1,1 @@
+play -n synth 0.2 sine 500 : synth 0.2 sine 900 : synth 0.8 sine 1500 : synth 0.2 sine 500 : synth 0.2 sine 900 : synth 0.8 sine 1500 : synth 0.6 sine 1700 : synth 0.2 sine 1800 : synth 0.2 sine 1700 : synth 0.2 sine 1800 : synth 0.2 sine 1700 : synth 0.2 sine 1500 : synth 0.8 sine 1200
